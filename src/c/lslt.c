@@ -1,5 +1,6 @@
 #include <pebble.h>
 #include "digits.h"
+#include "forced_time.h"
 
 #define MIN2(a, b) ((a) < (b) ? (a) : (b))
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
@@ -175,6 +176,8 @@ static void custom_layer_update_proc(Layer *layer, GContext *ctx)
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  // If a forced time is set in src/c/forced_time.c, ignore system ticks
+  if (forced_time_is_set()) return;
   s_last_time = *tick_time;
   layer_mark_dirty(s_custom_layer);
 }
@@ -192,6 +195,11 @@ static void window_load(Window *window) {
   time_t now = time(NULL);
   struct tm *t = localtime(&now);
   if (t) s_last_time = *t;
+
+  // If a forced time is provided in src/c/forced_time.c, override the real time
+  if (forced_time_is_set()) {
+    s_last_time = forced_time;
+  }
 
   // Calculate base layout dimensions
   const int16_t needed = BASE_GLYPH_SIZE * 2 + BASE_GLYPH_SPACING;
