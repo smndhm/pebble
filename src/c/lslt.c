@@ -1,6 +1,14 @@
 #include <pebble.h>
 #include "digits.h"
 
+// Message keys fallback (generated header may be present in build/include)
+#ifndef MESSAGE_KEY_BGCOLOR
+#define MESSAGE_KEY_BGCOLOR 10000
+#endif
+#ifndef MESSAGE_KEY_FGCOLOR
+#define MESSAGE_KEY_FGCOLOR 10001
+#endif
+
 #define MIN2(a, b) ((a) < (b) ? (a) : (b))
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
@@ -35,6 +43,10 @@ static CachedGlyph s_hour_glyphs[2], s_min_glyphs[2];
 static int8_t s_last_hour_digits[2] = {-1, -1};
 static int8_t s_last_min_digits[2] = {-1, -1};
 static float s_last_hour_interp = -1.0f, s_last_min_interp = -1.0f;
+
+// Theme colors (can be overridden via AppMessage keys BGCOLOR / FGCOLOR)
+static GColor s_bg_color;
+static GColor s_fg_color;
 
 // Glyph lookup table (in ROM)
 static const GlyphData GLYPH_TABLE[10] = {
@@ -165,13 +177,30 @@ static void custom_layer_update_proc(Layer *layer, GContext *ctx)
   }
 
   // Draw (always required)
-  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_context_set_fill_color(ctx, s_fg_color);
   static const Alignment alignments[4] = {ALIGN_RIGHT, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_LEFT};
   
   draw_cached_digit(ctx, &s_hour_glyphs[0], s_digit_rects[0], alignments[0]);
   draw_cached_digit(ctx, &s_hour_glyphs[1], s_digit_rects[1], alignments[1]);
   draw_cached_digit(ctx, &s_min_glyphs[0], s_digit_rects[2], alignments[2]);
   draw_cached_digit(ctx, &s_min_glyphs[1], s_digit_rects[3], alignments[3]);
+}
+
+// AppMessage inbox received handler - update colors
+static void inbox_received_callback(DictionaryIterator *iter, void *context) {
+  Tuple *tuple = dict_read_first(iter);
+  while (tuple) {
+    if (tuple->key == MESSAGE_KEY_BGCOLOR) {
+      uint32_t v = (uint32_t)tuple->value->int32;
+      s_bg_color = GColorFromHEX(v);
+      if (s_window) window_set_background_color(s_window, s_bg_color);
+    } else if (tuple->key == MESSAGE_KEY_FGCOLOR) {
+      uint32_t v = (uint32_t)tuple->value->int32;
+      s_fg_color = GColorFromHEX(v);
+      if (s_custom_layer) layer_mark_dirty(s_custom_layer);
+    }
+    tuple = dict_read_next(iter);
+  }
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
@@ -181,7 +210,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
-  window_set_background_color(window, GColorBlack);
+  // Initialize default colors
+  s_bg_color = GColorBlack;
+  s_fg_color = GColorWhite;
+  window_set_background_color(window, s_bg_color);
   
   // Use layer_get_unobstructed_bounds() instead of layer_get_bounds()
   // This handles Timeline Quick View and other system overlays automatically
@@ -302,6 +334,12 @@ static void init(void) {
   unobstructed_area_service_subscribe(handlers, NULL);
   
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+
+  // AppMessage setup: register inbox handler and open channel
+  app_message_register_inbox_received(inbox_received_callback);
+  const uint32_t inbox_size = app_message_inbox_size_maximum();
+  const uint32_t outbox_size = app_message_outbox_size_maximum();
+  app_message_open(inbox_size, outbox_size);
 }
 
 static void deinit(void) {

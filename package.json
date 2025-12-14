@@ -2,7 +2,7 @@
   "name": "lslt",
   "author": "smndhm",
   "description": "A minimalist digital watchface that animates a custom variable font, smoothly growing the glyph weight over time.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "keywords": [
     "pebble",
     "watchface",
@@ -19,14 +19,20 @@
       "basalt",
       "chalk",
       "diorite",
-      "emery",
-      "flint"
+      "emery"
     ],
     "watchapp": {
       "watchface": true
     },
     "resources": {
       "media": []
-    }
+    },
+    "messageKeys": [
+      "BGCOLOR",
+      "FGCOLOR"
+    ]
+  },
+  "dependencies": {
+    "pebble-clay": "^1.0.4"
   }
 }
