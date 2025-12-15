@@ -1,5 +1,5 @@
-var Clay = require("pebble-clay");
-var clay = new Clay([
+const Clay = require("pebble-clay");
+new Clay([
   {
     type: "heading",
     defaultValue: "LSLT",

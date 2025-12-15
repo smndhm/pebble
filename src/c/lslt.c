@@ -176,14 +176,14 @@ static void custom_layer_update_proc(Layer *layer, GContext *ctx)
     s_last_min_interp = min_interp;
   }
 
-  // Draw (always required)
+  // Draw (always required) - set color once
   graphics_context_set_fill_color(ctx, s_fg_color);
-  static const Alignment alignments[4] = {ALIGN_RIGHT, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_LEFT};
   
-  draw_cached_digit(ctx, &s_hour_glyphs[0], s_digit_rects[0], alignments[0]);
-  draw_cached_digit(ctx, &s_hour_glyphs[1], s_digit_rects[1], alignments[1]);
-  draw_cached_digit(ctx, &s_min_glyphs[0], s_digit_rects[2], alignments[2]);
-  draw_cached_digit(ctx, &s_min_glyphs[1], s_digit_rects[3], alignments[3]);
+  // Draw all digits with their alignments
+  draw_cached_digit(ctx, &s_hour_glyphs[0], s_digit_rects[0], ALIGN_RIGHT);
+  draw_cached_digit(ctx, &s_hour_glyphs[1], s_digit_rects[1], ALIGN_LEFT);
+  draw_cached_digit(ctx, &s_min_glyphs[0], s_digit_rects[2], ALIGN_RIGHT);
+  draw_cached_digit(ctx, &s_min_glyphs[1], s_digit_rects[3], ALIGN_LEFT);
 }
 
 // AppMessage inbox received handler - update colors
@@ -208,44 +208,23 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   layer_mark_dirty(s_custom_layer);
 }
 
-static void window_load(Window *window) {
-  Layer *root = window_get_root_layer(window);
-  // Initialize default colors
-  s_bg_color = GColorBlack;
-  s_fg_color = GColorWhite;
-  window_set_background_color(window, s_bg_color);
-  
-  // Use layer_get_unobstructed_bounds() instead of layer_get_bounds()
-  // This handles Timeline Quick View and other system overlays automatically
-  GRect bounds = layer_get_unobstructed_bounds(root);
-  s_screen_width = bounds.size.w;
-  s_screen_height = bounds.size.h;
-
-  time_t now = time(NULL);
-  struct tm *t = localtime(&now);
-  if (t) s_last_time = *t;
-
+// Recalculate layout based on current screen dimensions
+static void recalculate_layout(void) {
   // Calculate base layout dimensions
   const int16_t needed = BASE_GLYPH_SIZE * 2 + BASE_GLYPH_SPACING;
   s_square_size = MIN2(s_screen_width, s_screen_height);
 
   #ifdef PBL_ROUND
-  // Use grect_center_point() helper for accurate centering
   // Pre-compute circle constraints for round displays
-  // Maximum inscribed square in circle: side = diameter / sqrt(2)
-  // With padding: inner_radius = (screen_half - padding)
   int16_t screen_half = s_square_size / 2;
   float R_inner = (float)screen_half - (float)DIGIT_EDGE_PADDING_H;
   if (R_inner < 4.0f) R_inner = 4.0f;
   
-  // Maximum square that fits in circle: side = R_inner * sqrt(2)
-  // Using 1.41421356f as sqrt(2) approximation
   float max_square_f = R_inner * 1.41421356f;
   int16_t max_square = (int16_t)max_square_f;
   if (max_square < 8) max_square = 8;
-  if (max_square % 2 != 0) max_square--;  // Keep even
+  if (max_square % 2 != 0) max_square--;
   
-  // Use smaller of available space or circle constraint
   s_square_size = MIN2(s_square_size, max_square);
   #endif
 
@@ -254,17 +233,14 @@ static void window_load(Window *window) {
   s_stroke_width = (int16_t)(BASE_GLYPH_SPACING * scale);
   if (s_square_size % 2 == 0 && s_stroke_width % 2 != 0) s_stroke_width++;
 
-  // Calculate initial digit size
+  // Calculate digit size
   int16_t candidate = (s_square_size - s_stroke_width) / 2;
   if (candidate < 4) candidate = 4;
   if (candidate % 2 != 0) candidate--;
 
   #ifdef PBL_ROUND
-  // Additional constraint for round: ensure corners of digit squares stay in circle
-  // Each digit square corner is at distance sqrt(2) * (digit_half + stroke_half) from center
-  // Require: sqrt(2) * (digit_size/2 + stroke_width/2) <= R_inner
   int16_t half_stroke = s_stroke_width / 2;
-  float max_half_diagonal = R_inner / 1.41421356f;  // R_inner / sqrt(2)
+  float max_half_diagonal = R_inner / 1.41421356f;
   int16_t max_digit_from_circle = (int16_t)(max_half_diagonal - (float)half_stroke) * 2;
   if (max_digit_from_circle < 4) max_digit_from_circle = 4;
   if (max_digit_from_circle % 2 != 0) max_digit_from_circle--;
@@ -274,7 +250,7 @@ static void window_load(Window *window) {
   s_digit_size = candidate;
   #endif
 
-  // Use bounds for positioning (already accounts for unobstructed area)
+  // Calculate digit rectangles positions
   int16_t hs = s_stroke_width / 2;
   int16_t cx = s_screen_width / 2;
   int16_t cy = s_screen_height / 2;
@@ -284,11 +260,30 @@ static void window_load(Window *window) {
   s_digit_rects[2] = GRect(cx - s_digit_size - hs, cy + hs, s_digit_size, s_digit_size);
   s_digit_rects[3] = GRect(cx + hs, cy + hs, s_digit_size, s_digit_size);
 
-  // Update cached glyph height to match actual digit size
+  // Update cached glyph height
   s_cached_glyph_target_height = s_digit_size;
+}
 
-  // Create layer with full window bounds (not unobstructed)
-  // This ensures we fill the entire window behind any overlays
+static void window_load(Window *window) {
+  Layer *root = window_get_root_layer(window);
+  // Initialize default colors
+  s_bg_color = GColorBlack;
+  s_fg_color = GColorWhite;
+  window_set_background_color(window, s_bg_color);
+  
+  // Use layer_get_unobstructed_bounds()
+  GRect bounds = layer_get_unobstructed_bounds(root);
+  s_screen_width = bounds.size.w;
+  s_screen_height = bounds.size.h;
+
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  if (t) s_last_time = *t;
+
+  // Calculate initial layout
+  recalculate_layout();
+
+  // Create layer with full window bounds
   GRect full_bounds = layer_get_bounds(root);
   s_custom_layer = layer_create(full_bounds);
   layer_set_update_proc(s_custom_layer, custom_layer_update_proc);
@@ -296,24 +291,28 @@ static void window_load(Window *window) {
 }
 
 // Handler for when unobstructed area changes (Timeline Quick View)
-static void unobstructed_will_change(GRect final_unobstructed_screen_area, void *context) {
-  // Recalculate layout when obstruction is about to appear/disappear
-  s_screen_width = final_unobstructed_screen_area.size.w;
-  s_screen_height = final_unobstructed_screen_area.size.h;
+static void unobstructed_change(AnimationProgress progress, void *context) {
+  // Get the current unobstructed bounds during animation
+  Layer *root = window_get_root_layer(s_window);
+  GRect unobstructed = layer_get_unobstructed_bounds(root);
   
-  // Force recalculation of layout on next draw
-  s_cached_glyph_target_height = -1;
-  
-  // Mark layer dirty to trigger redraw with new layout
-  if (s_custom_layer) {
-    layer_mark_dirty(s_custom_layer);
-  }
-}
-
-static void unobstructed_did_change(void *context) {
-  // Layout has been updated, ensure one final redraw
-  if (s_custom_layer) {
-    layer_mark_dirty(s_custom_layer);
+  // Only recalculate if size actually changed
+  if (unobstructed.size.w != s_screen_width || unobstructed.size.h != s_screen_height) {
+    s_screen_width = unobstructed.size.w;
+    s_screen_height = unobstructed.size.h;
+    
+    // Recalculate complete layout (digit sizes, positions, etc.)
+    recalculate_layout();
+    
+    // Invalidate glyph cache to force regeneration at new size
+    s_last_hour_digits[0] = s_last_hour_digits[1] = -1;
+    s_last_min_digits[0] = s_last_min_digits[1] = -1;
+    s_last_hour_interp = s_last_min_interp = -1.0f;
+    
+    // Mark layer dirty to trigger redraw with new layout
+    if (s_custom_layer) {
+      layer_mark_dirty(s_custom_layer);
+    }
   }
 }
 
@@ -328,8 +327,7 @@ static void init(void) {
   
   // Subscribe to unobstructed area changes (Timeline Quick View support)
   UnobstructedAreaHandlers handlers = {
-    .will_change = unobstructed_will_change,
-    .did_change = unobstructed_did_change
+    .change = unobstructed_change
   };
   unobstructed_area_service_subscribe(handlers, NULL);
   
