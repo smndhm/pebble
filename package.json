@@ -6,7 +6,13 @@
   "keywords": [
     "pebble",
     "watchface",
-    "LSLT"
+    "pebble-watchface",
+    "LSLT",
+    "variable-font",
+    "custom-font",
+    "animated",
+    "rebble",
+    "repebble"
   ],
   "private": true,
   "pebble": {
