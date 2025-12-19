@@ -47,6 +47,12 @@ static float s_last_hour_interp = -1.0f, s_last_min_interp = -1.0f;
 // Theme colors (can be overridden via AppMessage keys BGCOLOR / FGCOLOR)
 static GColor s_bg_color;
 static GColor s_fg_color;
+// Track whether each color was initialized from user/settings
+static bool s_bg_initialized = false;
+static bool s_fg_initialized = false;
+// Persistence keys for stored colors
+#define PERSIST_KEY_BGCOLOR 1
+#define PERSIST_KEY_FGCOLOR 2
 
 // Glyph lookup table (in ROM)
 static const GlyphData GLYPH_TABLE[10] = {
@@ -194,10 +200,14 @@ static void inbox_received_callback(DictionaryIterator *iter, void *context) {
       uint32_t v = (uint32_t)tuple->value->int32;
       s_bg_color = GColorFromHEX(v);
       if (s_window) window_set_background_color(s_window, s_bg_color);
+      s_bg_initialized = true;
+      persist_write_int(PERSIST_KEY_BGCOLOR, (int)v);
     } else if (tuple->key == MESSAGE_KEY_FGCOLOR) {
       uint32_t v = (uint32_t)tuple->value->int32;
       s_fg_color = GColorFromHEX(v);
       if (s_custom_layer) layer_mark_dirty(s_custom_layer);
+      s_fg_initialized = true;
+      persist_write_int(PERSIST_KEY_FGCOLOR, (int)v);
     }
     tuple = dict_read_next(iter);
   }
@@ -266,9 +276,15 @@ static void recalculate_layout(void) {
 
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
-  // Initialize default colors
-  s_bg_color = GColorBlack;
-  s_fg_color = GColorWhite;
+  // Initialize default colors only if not already set by user
+  if (!s_bg_initialized) {
+    s_bg_color = GColorBlack;
+    s_bg_initialized = true;
+  }
+  if (!s_fg_initialized) {
+    s_fg_color = GColorWhite;
+    s_fg_initialized = true;
+  }
   window_set_background_color(window, s_bg_color);
   
   // Use layer_get_unobstructed_bounds()
@@ -288,6 +304,9 @@ static void window_load(Window *window) {
   s_custom_layer = layer_create(full_bounds);
   layer_set_update_proc(s_custom_layer, custom_layer_update_proc);
   layer_add_child(root, s_custom_layer);
+  // Force an initial redraw and log current colors/state
+  layer_mark_dirty(s_custom_layer);
+  
 }
 
 // Handler for when unobstructed area changes (Timeline Quick View)
@@ -321,6 +340,18 @@ static void window_unload(Window *window) {
 }
 
 static void init(void) {
+  // Load persisted colors if available (do this before creating the window so window_load sees them)
+  if (persist_exists(PERSIST_KEY_BGCOLOR)) {
+    int32_t v = persist_read_int(PERSIST_KEY_BGCOLOR);
+    s_bg_color = GColorFromHEX((uint32_t)v);
+    s_bg_initialized = true;
+  }
+  if (persist_exists(PERSIST_KEY_FGCOLOR)) {
+    int32_t v = persist_read_int(PERSIST_KEY_FGCOLOR);
+    s_fg_color = GColorFromHEX((uint32_t)v);
+    s_fg_initialized = true;
+  }
+
   s_window = window_create();
   window_set_window_handlers(s_window, (WindowHandlers){.load = window_load, .unload = window_unload});
   window_stack_push(s_window, true);

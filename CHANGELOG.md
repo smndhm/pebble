@@ -1,0 +1,18 @@
+# CHANGELOG
+
+## 0.1.0
+
+Release
+
+## 0.2.0
+
+Features:
+
+- Add the ability to customize background and foreground colors.
+- Automatically resize displayed time when "Timeline Quick View" is active.
+
+## 0.3.0
+
+Fix:
+
+- Preserve color settings when returning from menus.
