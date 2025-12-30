@@ -16,3 +16,9 @@ Features:
 Fix:
 
 - Preserve color settings when returning from menus.
+
+## 0.4.0
+
+Chore:
+
+- Use `@rebble/clay` instead of `pebble-clay`.

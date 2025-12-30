@@ -1,4 +1,4 @@
-const Clay = require("pebble-clay");
+const Clay = require("@rebble/clay");
 new Clay([
   {
     type: "heading",
