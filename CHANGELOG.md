@@ -22,3 +22,9 @@ Fix:
 Chore:
 
 - Use `@rebble/clay` instead of `pebble-clay`.
+
+## 0.5.0
+
+Fix:
+
+- Respect user 12/24h preference.

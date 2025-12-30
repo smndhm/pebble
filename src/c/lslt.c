@@ -142,10 +142,17 @@ static void custom_layer_update_proc(Layer *layer, GContext *ctx)
     if (s_cached_glyph_target_height <= 0) s_cached_glyph_target_height = BASE_GLYPH_SIZE;
   }
 
-  // Extract digits
+  // Extract digits, respecting user 12/24h preference
+  int display_hour = s_last_time.tm_hour;
+  if (!clock_is_24h_style()) {
+    // Convert 0 -> 12 for 12-hour style
+    display_hour = display_hour % 12;
+    if (display_hour == 0) display_hour = 12;
+  }
+  // Extract hour digits from display_hour (1..12 or 0..23)
   int8_t hour_digits[2] = {
-    validate_digit(s_last_time.tm_hour / 10),
-    validate_digit(s_last_time.tm_hour % 10)
+    validate_digit(display_hour / 10),
+    validate_digit(display_hour % 10)
   };
   int8_t min_digits[2] = {
     validate_digit(s_last_time.tm_min / 10),
