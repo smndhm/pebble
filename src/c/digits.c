@@ -153,82 +153,49 @@ const Point nine_bold[NINE_NUM_CONTOURS][POINTS_PER_CONTOUR] = {
     {{46, 44}, {34, 44}, {34, 0}, {46, 0}}
 };
 
-// Core glyph functions implementation
-void interpolate_glyph(const Point regular[][POINTS_PER_CONTOUR], 
-                       const Point bold[][POINTS_PER_CONTOUR], 
-                       Point out[][POINTS_PER_CONTOUR], 
-                       int num_contours, float percent, 
-                       int glyph_height, bool invert_y)
+void interpolate_glyph(const Point regular[][POINTS_PER_CONTOUR],
+                       const Point bold[][POINTS_PER_CONTOUR],
+                       Point out[][POINTS_PER_CONTOUR],
+                       int num_contours, int32_t percent_fp,
+                       int glyph_height, bool invert_y,
+                       int16_t *out_min_x, int16_t *out_min_y,
+                       int16_t *out_max_x, int16_t *out_max_y)
 {
-  // Find bounding box of both variants
-  int16_t orig_min_x = regular[0][0].x;
-  int16_t orig_max_x = regular[0][0].x;
-  int16_t orig_min_y = regular[0][0].y;
-  int16_t orig_max_y = regular[0][0].y;
-  
+  // Precomputed scale: glyph_height / GLYPH_BBOX_HEIGHT in fixed-point
+  int32_t scale_fp = ((int32_t)glyph_height << FP_SHIFT) / GLYPH_BBOX_HEIGHT;
+
+  // Track output bounding box
+  int16_t bmin_x = INT16_MAX, bmin_y = INT16_MAX;
+  int16_t bmax_x = INT16_MIN, bmax_y = INT16_MIN;
+
+  // Single pass: interpolate, scale, and compute bounding box
   for (int c = 0; c < num_contours; c++) {
     for (int p = 0; p < POINTS_PER_CONTOUR; p++) {
-      int16_t rx = regular[c][p].x, ry = regular[c][p].y;
-      int16_t bx = bold[c][p].x, by = bold[c][p].y;
-      if (rx < orig_min_x) orig_min_x = rx;
-      if (bx < orig_min_x) orig_min_x = bx;
-      if (rx > orig_max_x) orig_max_x = rx;
-      if (bx > orig_max_x) orig_max_x = bx;
-      if (ry < orig_min_y) orig_min_y = ry;
-      if (by < orig_min_y) orig_min_y = by;
-      if (ry > orig_max_y) orig_max_y = ry;
-      if (by > orig_max_y) orig_max_y = by;
-    }
-  }
-  
-  int16_t orig_height = orig_max_y - orig_min_y + 1;
-  if (orig_height <= 0) orig_height = 1;
-  float scale = (float)glyph_height / (float)orig_height;
+      // Fixed-point interpolation: reg + (bold - reg) * percent
+      int32_t interp_x = ((int32_t)regular[c][p].x << FP_SHIFT)
+                        + (bold[c][p].x - regular[c][p].x) * percent_fp;
+      int32_t interp_y = ((int32_t)regular[c][p].y << FP_SHIFT)
+                        + (bold[c][p].y - regular[c][p].y) * percent_fp;
 
-  // Interpolate and scale
-  for (int c = 0; c < num_contours; c++) {
-    for (int p = 0; p < POINTS_PER_CONTOUR; p++) {
-      float interp_x = regular[c][p].x + (bold[c][p].x - regular[c][p].x) * percent;
-      float interp_y = regular[c][p].y + (bold[c][p].y - regular[c][p].y) * percent;
-      int16_t scaled_x = (int16_t)((interp_x - orig_min_x) * scale + 0.5f);
-      int16_t scaled_y = (int16_t)((interp_y - orig_min_y) * scale + 0.5f);
-      out[c][p].x = scaled_x;
-      out[c][p].y = invert_y ? (glyph_height - scaled_y) : scaled_y;
-    }
-  }
-}
+      // Subtract bbox origin, scale, and round (all in fixed-point)
+      int16_t sx = (int16_t)(((interp_x - (GLYPH_BBOX_MIN_X << FP_SHIFT)) * scale_fp
+                              + (1 << (2 * FP_SHIFT - 1))) >> (2 * FP_SHIFT));
+      int16_t sy = (int16_t)(((interp_y - (GLYPH_BBOX_MIN_Y << FP_SHIFT)) * scale_fp
+                              + (1 << (2 * FP_SHIFT - 1))) >> (2 * FP_SHIFT));
 
-void draw_glyph(GContext *ctx, const Point glyph[][POINTS_PER_CONTOUR], int num_contours)
-{
-  for (int c = 0; c < num_contours; c++) {
-    int16_t min_x = glyph[c][0].x, max_x = glyph[c][0].x;
-    int16_t min_y = glyph[c][0].y, max_y = glyph[c][0].y;
-    
-    for (int p = 1; p < POINTS_PER_CONTOUR; p++) {
-      if (glyph[c][p].x < min_x) min_x = glyph[c][p].x;
-      if (glyph[c][p].x > max_x) max_x = glyph[c][p].x;
-      if (glyph[c][p].y < min_y) min_y = glyph[c][p].y;
-      if (glyph[c][p].y > max_y) max_y = glyph[c][p].y;
-    }
-    
-    graphics_fill_rect(ctx, GRect(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1), 
-                       0, GCornerNone);
-  }
-}
+      out[c][p].x = sx;
+      out[c][p].y = invert_y ? (glyph_height - sy) : sy;
 
-void glyph_bounding_box(const Point glyph[][POINTS_PER_CONTOUR], int num_contours, 
-                        int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y)
-{
-  *min_x = *max_x = glyph[0][0].x;
-  *min_y = *max_y = glyph[0][0].y;
-  
-  for (int c = 0; c < num_contours; c++) {
-    for (int p = 0; p < POINTS_PER_CONTOUR; p++) {
-      int16_t x = glyph[c][p].x, y = glyph[c][p].y;
-      if (x < *min_x) *min_x = x;
-      if (x > *max_x) *max_x = x;
-      if (y < *min_y) *min_y = y;
-      if (y > *max_y) *max_y = y;
+      // Update bounding box
+      if (out[c][p].x < bmin_x) bmin_x = out[c][p].x;
+      if (out[c][p].x > bmax_x) bmax_x = out[c][p].x;
+      if (out[c][p].y < bmin_y) bmin_y = out[c][p].y;
+      if (out[c][p].y > bmax_y) bmax_y = out[c][p].y;
     }
   }
+
+  *out_min_x = bmin_x;
+  *out_min_y = bmin_y;
+  *out_max_x = bmax_x;
+  *out_max_y = bmax_y;
 }

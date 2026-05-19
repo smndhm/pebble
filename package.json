@@ -2,7 +2,7 @@
   "name": "lslt",
   "author": "smndhm",
   "description": "A minimalist digital watchface that animates a custom variable font, smoothly growing the glyph weight over time.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "keywords": [
     "pebble",
     "watchface",
@@ -40,6 +40,6 @@
     ]
   },
   "dependencies": {
-    "@rebble/clay": "^1.0.6"
+    "@rebble/clay": "^1.0.8"
   }
 }

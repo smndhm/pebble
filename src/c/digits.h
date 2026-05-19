@@ -1,15 +1,23 @@
 #pragma once
 #include <pebble.h>
 
-// Point structure for glyph coordinates
 typedef struct {
-    int16_t x;  // Use int16_t instead of int to save memory
+    int16_t x;
     int16_t y;
 } Point;
 
-// All glyphs use cubic Bézier curves with 4 control points
+// All contours are axis-aligned rectangles defined by 4 corner points
 #define POINTS_PER_CONTOUR 4
-#define MAX_CONTOURS 6  // Maximum across all digits (2 and 3 have 6)
+#define MAX_CONTOURS 6
+
+// Fixed-point arithmetic (8 fractional bits)
+#define FP_SHIFT 8
+#define FP_ONE (1 << FP_SHIFT)
+
+// Precomputed union bounding box of all regular+bold glyph variants
+#define GLYPH_BBOX_MIN_X 2
+#define GLYPH_BBOX_MIN_Y 0
+#define GLYPH_BBOX_HEIGHT 45  // (44 - 0 + 1)
 
 // Number of contours per digit
 #define ZERO_NUM_CONTOURS  4
@@ -23,7 +31,7 @@ typedef struct {
 #define EIGHT_NUM_CONTOURS 5
 #define NINE_NUM_CONTOURS  5
 
-// Glyph data - all in ROM to save RAM
+// Glyph data declarations
 extern const Point zero_regular[ZERO_NUM_CONTOURS][POINTS_PER_CONTOUR];
 extern const Point zero_bold[ZERO_NUM_CONTOURS][POINTS_PER_CONTOUR];
 extern const Point one_regular[ONE_NUM_CONTOURS][POINTS_PER_CONTOUR];
@@ -51,14 +59,13 @@ extern const Point nine_bold[NINE_NUM_CONTOURS][POINTS_PER_CONTOUR];
 #define BASE_GLYPH_SIZE 44
 #define BASE_GLYPH_SPACING 4
 
-// Core functions
-void interpolate_glyph(const Point regular[][POINTS_PER_CONTOUR], 
-                       const Point bold[][POINTS_PER_CONTOUR], 
-                       Point out[][POINTS_PER_CONTOUR], 
-                       int num_contours, float percent, 
-                       int glyph_height, bool invert_y);
-
-void draw_glyph(GContext *ctx, const Point glyph[][POINTS_PER_CONTOUR], int num_contours);
-
-void glyph_bounding_box(const Point glyph[][POINTS_PER_CONTOUR], int num_contours, 
-                        int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y);
+// Interpolate between regular and bold glyphs using fixed-point math.
+// percent_fp: interpolation amount in 8.8 fixed-point (0 = regular, FP_ONE = bold)
+// Also computes the output bounding box in a single pass.
+void interpolate_glyph(const Point regular[][POINTS_PER_CONTOUR],
+                       const Point bold[][POINTS_PER_CONTOUR],
+                       Point out[][POINTS_PER_CONTOUR],
+                       int num_contours, int32_t percent_fp,
+                       int glyph_height, bool invert_y,
+                       int16_t *out_min_x, int16_t *out_min_y,
+                       int16_t *out_max_x, int16_t *out_max_y);

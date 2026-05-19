@@ -10,7 +10,6 @@
 #endif
 
 #define MIN2(a, b) ((a) < (b) ? (a) : (b))
-#define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 typedef enum { ALIGN_LEFT = -1, ALIGN_CENTER = 0, ALIGN_RIGHT = 1 } Alignment;
 
@@ -42,7 +41,7 @@ static GRect s_digit_rects[4];
 static CachedGlyph s_hour_glyphs[2], s_min_glyphs[2];
 static int8_t s_last_hour_digits[2] = {-1, -1};
 static int8_t s_last_min_digits[2] = {-1, -1};
-static float s_last_hour_interp = -1.0f, s_last_min_interp = -1.0f;
+static int32_t s_last_hour_interp = -1, s_last_min_interp = -1;
 
 // Theme colors (can be overridden via AppMessage keys BGCOLOR / FGCOLOR)
 static GColor s_bg_color;
@@ -69,10 +68,10 @@ static const GlyphData GLYPH_TABLE[10] = {
 };
 
 // Helper functions
-static inline float compute_interpolation(int value, int max_value) {
-  if (value < 0) return 0.0f;
-  float interp = (float)value / (float)max_value;
-  return CLAMP(interp, 0.0f, 1.0f);
+static inline int32_t compute_interpolation_fp(int value, int max_value) {
+  if (value <= 0) return 0;
+  if (value >= max_value) return FP_ONE;
+  return ((int32_t)value << FP_SHIFT) / max_value;
 }
 
 static inline int8_t validate_digit(int digit) {
@@ -80,13 +79,12 @@ static inline int8_t validate_digit(int digit) {
 }
 
 // Pre-calculate glyph and cache it
-static void precalculate_glyph(CachedGlyph *cached, const GlyphData *glyph_data, 
-                               float interp, int16_t glyph_height)
+static void precalculate_glyph(CachedGlyph *cached, const GlyphData *glyph_data,
+                               int32_t interp_fp, int16_t glyph_height)
 {
-  interpolate_glyph(glyph_data->regular, glyph_data->bold, cached->glyph, 
-                    glyph_data->num_contours, interp, glyph_height, true);
-  glyph_bounding_box((const Point (*)[POINTS_PER_CONTOUR])cached->glyph, glyph_data->num_contours, 
-                     &cached->gmin_x, &cached->gmin_y, &cached->gmax_x, &cached->gmax_y);
+  interpolate_glyph(glyph_data->regular, glyph_data->bold, cached->glyph,
+                    glyph_data->num_contours, interp_fp, glyph_height, true,
+                    &cached->gmin_x, &cached->gmin_y, &cached->gmax_x, &cached->gmax_y);
   cached->num_contours = glyph_data->num_contours;
   cached->valid = true;
 }
@@ -159,9 +157,9 @@ static void custom_layer_update_proc(Layer *layer, GContext *ctx)
     validate_digit(s_last_time.tm_min % 10)
   };
 
-  // Compute interpolations
-  float hour_interp = compute_interpolation(s_last_time.tm_min, 59);
-  float min_interp = compute_interpolation(s_last_time.tm_sec, 59);
+  // Compute interpolations (fixed-point)
+  int32_t hour_interp = compute_interpolation_fp(s_last_time.tm_min, 59);
+  int32_t min_interp = compute_interpolation_fp(s_last_time.tm_sec, 59);
 
   // Update hour cache if needed (only ~1x per minute)
   if (hour_digits[0] != s_last_hour_digits[0] || 
@@ -234,20 +232,19 @@ static void recalculate_layout(void) {
   #ifdef PBL_ROUND
   // Pre-compute circle constraints for round displays
   int16_t screen_half = s_square_size / 2;
-  float R_inner = (float)screen_half - (float)DIGIT_EDGE_PADDING_H;
-  if (R_inner < 4.0f) R_inner = 4.0f;
-  
-  float max_square_f = R_inner * 1.41421356f;
-  int16_t max_square = (int16_t)max_square_f;
+  int16_t R_inner = screen_half - DIGIT_EDGE_PADDING_H;
+  if (R_inner < 4) R_inner = 4;
+
+  // R_inner * sqrt(2) ≈ R_inner * 1448 / 1024
+  int16_t max_square = (int16_t)((int32_t)R_inner * 1448 / 1024);
   if (max_square < 8) max_square = 8;
   if (max_square % 2 != 0) max_square--;
-  
+
   s_square_size = MIN2(s_square_size, max_square);
   #endif
 
   // Calculate stroke width (center divider)
-  const float scale = (float)s_square_size / (float)needed;
-  s_stroke_width = (int16_t)(BASE_GLYPH_SPACING * scale);
+  s_stroke_width = (int16_t)((int32_t)BASE_GLYPH_SPACING * s_square_size / needed);
   if (s_square_size % 2 == 0 && s_stroke_width % 2 != 0) s_stroke_width++;
 
   // Calculate digit size
@@ -257,8 +254,8 @@ static void recalculate_layout(void) {
 
   #ifdef PBL_ROUND
   int16_t half_stroke = s_stroke_width / 2;
-  float max_half_diagonal = R_inner / 1.41421356f;
-  int16_t max_digit_from_circle = (int16_t)(max_half_diagonal - (float)half_stroke) * 2;
+  // R_inner / sqrt(2) ≈ R_inner * 724 / 1024
+  int16_t max_digit_from_circle = (int16_t)(((int32_t)R_inner * 724 / 1024) - half_stroke) * 2;
   if (max_digit_from_circle < 4) max_digit_from_circle = 4;
   if (max_digit_from_circle % 2 != 0) max_digit_from_circle--;
   
@@ -333,7 +330,7 @@ static void unobstructed_change(AnimationProgress progress, void *context) {
     // Invalidate glyph cache to force regeneration at new size
     s_last_hour_digits[0] = s_last_hour_digits[1] = -1;
     s_last_min_digits[0] = s_last_min_digits[1] = -1;
-    s_last_hour_interp = s_last_min_interp = -1.0f;
+    s_last_hour_interp = s_last_min_interp = -1;
     
     // Mark layer dirty to trigger redraw with new layout
     if (s_custom_layer) {

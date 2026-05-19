@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@rebble/clay':
-        specifier: ^1.0.6
-        version: 1.0.6
+        specifier: ^1.0.8
+        version: 1.0.8
 
 packages:
 
-  '@rebble/clay@1.0.6':
-    resolution: {integrity: sha512-gFmTUAHsDa+lV6QTU0StNuFk7MClF2GrkpCsXAXQtjk0wKo5lchCfwnhWzwBEWCyCkYAN4GRkaZG4TR4O4/tVg==}
+  '@rebble/clay@1.0.8':
+    resolution: {integrity: sha512-nLZes039sniW1Qx24AXirk1EH+JXNKSX5fAiJYObPL1znt83IGLIulZvDWXvM+HCmaSnjPheYdxvspr3CZicYQ==}
 
 snapshots:
 
-  '@rebble/clay@1.0.6': {}
+  '@rebble/clay@1.0.8': {}

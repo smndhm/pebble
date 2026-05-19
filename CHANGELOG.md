@@ -28,3 +28,10 @@ Chore:
 Fix:
 
 - Respect user 12/24h preference.
+
+## 0.6.0
+
+Chore:
+
+- Update `@rebble/clay` to 1.0.8.
+- Replace floating-point arithmetic with fixed-point for glyph rendering.
