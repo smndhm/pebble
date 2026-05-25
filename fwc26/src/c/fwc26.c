@@ -81,6 +81,7 @@ static void draw_digit(GContext *ctx, int digit, GRect r, GColor fg) {
   GDrawCommandImage *img  = s_digits[digit];
   GDrawCommandList  *cmds = gdraw_command_image_get_command_list(img);
   uint32_t n = gdraw_command_list_get_num_commands(cmds);
+  // Mutates shared PDC commands — safe because all visible digits use the same fg per frame.
   for (uint32_t j = 0; j < n; j++) {
     GDrawCommand *cmd = gdraw_command_list_get_command(cmds, j);
     gdraw_command_set_hidden(cmd, false);
@@ -128,7 +129,6 @@ static void tap_timer_callback(void *data) {
 }
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
-  if (!s_tap_enabled) return;
   if (s_tap_active) {
     if (s_tap_timer) { app_timer_cancel(s_tap_timer); s_tap_timer = NULL; }
     s_tap_active = false;
@@ -163,6 +163,13 @@ static void inbox_received_callback(DictionaryIterator *iter, void *context) {
     } else if (t->key == MESSAGE_KEY_TAP_ENABLED) {
       s_tap_enabled = (bool)t->value->int32;
       persist_write_bool(PERSIST_TAP_ENABLED, s_tap_enabled);
+      if (s_tap_enabled) {
+        accel_tap_service_subscribe(tap_handler);
+      } else {
+        accel_tap_service_unsubscribe();
+        if (s_tap_timer) { app_timer_cancel(s_tap_timer); s_tap_timer = NULL; }
+        s_tap_active = false;
+      }
     }
     t = dict_read_next(iter);
   }
@@ -210,7 +217,7 @@ static void init(void) {
   window_stack_push(s_window, true);
 
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-  accel_tap_service_subscribe(tap_handler);
+  if (s_tap_enabled) accel_tap_service_subscribe(tap_handler);
   app_message_open(128, 0);
   app_message_register_inbox_received(inbox_received_callback);
 }
