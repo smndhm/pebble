@@ -1,0 +1,54 @@
+import os
+import os.path
+import sys
+import glob
+import subprocess
+
+top = '.'
+out = 'build'
+
+
+def options(ctx):
+    ctx.load('pebble_sdk')
+
+
+def configure(ctx):
+    ctx.load('pebble_sdk')
+
+
+def build(ctx):
+    # Generate PDCs from SVGs before the Pebble SDK build
+    project_root = ctx.path.abspath()
+    svg_dir  = os.path.join(project_root, 'resources', 'svg')
+    out_dir  = os.path.join(project_root, 'resources', 'digits')
+    svg2pdc  = os.path.join(project_root, 'svg2pdc.py')
+
+    if os.path.isdir(svg_dir) and os.path.isfile(svg2pdc):
+        os.makedirs(out_dir, exist_ok=True)
+        for svg in sorted(glob.glob(os.path.join(svg_dir, '*.svg'))):
+            subprocess.check_call([sys.executable, svg2pdc, svg, out_dir])
+
+    ctx.load('pebble_sdk')
+
+    build_worker = os.path.exists('worker_src')
+    binaries = []
+    cached_env = ctx.env
+
+    for platform in ctx.env.TARGET_PLATFORMS:
+        ctx.env = ctx.all_envs[platform]
+        ctx.set_group(ctx.env.PLATFORM_NAME)
+        app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
+        ctx.pbl_build(
+            source=ctx.path.ant_glob('src/c/**/*.c'),
+            target=app_elf,
+            bin_type='app'
+        )
+        binaries.append({'platform': platform, 'app_elf': app_elf})
+
+    ctx.env = cached_env
+    ctx.set_group('bundle')
+    ctx.pbl_bundle(
+        binaries=binaries,
+        js=ctx.path.ant_glob(['src/pkjs/**/*.js', 'src/pkjs/**/*.json']),
+        js_entry_file='src/pkjs/index.js'
+    )
