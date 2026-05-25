@@ -1,18 +1,24 @@
 #include <pebble.h>
 
-// Digit pixel dimensions — sized to fit 2 per row, ratio 1000:750
+// PDCs are generated at logo size; clock mode scales coordinates at draw time.
 #ifdef PBL_PLATFORM_EMERY
-  #define DIGIT_W  91
-  #define DIGIT_H  68
-  #define DIGIT_RES(n) RESOURCE_ID_DIGIT_EMERY_##n
+  #define DIGIT_W       91
+  #define DIGIT_H       68
+  #define LOGO_DIGIT_W  141
+  #define LOGO_DIGIT_H  106
+  #define DIGIT_RES(n)  RESOURCE_ID_DIGIT_EMERY_##n
 #elif defined(PBL_ROUND)
-  #define DIGIT_W  80
-  #define DIGIT_H  60
-  #define DIGIT_RES(n) RESOURCE_ID_DIGIT_CHALK_##n
+  #define DIGIT_W       80
+  #define DIGIT_H       60
+  #define LOGO_DIGIT_W  109
+  #define LOGO_DIGIT_H  82
+  #define DIGIT_RES(n)  RESOURCE_ID_DIGIT_CHALK_##n
 #else
-  #define DIGIT_W  64
-  #define DIGIT_H  48
-  #define DIGIT_RES(n) RESOURCE_ID_DIGIT_STD_##n
+  #define DIGIT_W       64
+  #define DIGIT_H       48
+  #define LOGO_DIGIT_W  101
+  #define LOGO_DIGIT_H  76
+  #define DIGIT_RES(n)  RESOURCE_ID_DIGIT_STD_##n
 #endif
 
 #define GAP 8
@@ -48,7 +54,7 @@ static Layer             *s_layer;
 static struct tm          s_time;
 static GDrawCommandImage *s_digits[10];
 static GRect              s_clock_rects[4]; // H1 H2 M1 M2
-static GRect              s_logo_rects[2];  // M1 M2
+static GRect              s_logo_rects[2];  // M1 M2 (stacked vertically)
 
 static GColor s_bgcolor;
 static GColor s_fgcolor;
@@ -70,25 +76,67 @@ static void recalculate_layout(GRect bounds) {
   s_clock_rects[2] = GRect(cx,                   cy + DIGIT_H + GAP,   DIGIT_W, DIGIT_H);
   s_clock_rects[3] = GRect(cx + DIGIT_W + GAP,   cy + DIGIT_H + GAP,   DIGIT_W, DIGIT_H);
 
-  // Logo mode: 2 digits stacked vertically, centered
-  int lx = (sw - DIGIT_W) / 2;
-  int ly = (sh - (2 * DIGIT_H + GAP)) / 2;
-  s_logo_rects[0] = GRect(lx, ly,                  DIGIT_W, DIGIT_H);
-  s_logo_rects[1] = GRect(lx, ly + DIGIT_H + GAP,  DIGIT_W, DIGIT_H);
+  // Logo mode: 2 digits stacked vertically, centered, larger size
+  int lx = (sw - LOGO_DIGIT_W) / 2;
+  int ly = (sh - (2 * LOGO_DIGIT_H + GAP)) / 2;
+  s_logo_rects[0] = GRect(lx, ly,                       LOGO_DIGIT_W, LOGO_DIGIT_H);
+  s_logo_rects[1] = GRect(lx, ly + LOGO_DIGIT_H + GAP,  LOGO_DIGIT_W, LOGO_DIGIT_H);
 }
 
-static void draw_digit(GContext *ctx, int digit, GRect r, GColor fg) {
-  GDrawCommandImage *img  = s_digits[digit];
-  GDrawCommandList  *cmds = gdraw_command_image_get_command_list(img);
+static void _color_digit(GDrawCommandImage *img, GColor fg) {
+  GDrawCommandList *cmds = gdraw_command_image_get_command_list(img);
   uint32_t n = gdraw_command_list_get_num_commands(cmds);
-  // Mutates shared PDC commands — safe because all visible digits use the same fg per frame.
   for (uint32_t j = 0; j < n; j++) {
     GDrawCommand *cmd = gdraw_command_list_get_command(cmds, j);
     gdraw_command_set_hidden(cmd, false);
     gdraw_command_set_fill_color(cmd, fg);
     gdraw_command_set_stroke_width(cmd, 0);
   }
+}
+
+// Draw at native (logo) size.
+static void draw_digit(GContext *ctx, int digit, GRect r, GColor fg) {
+  GDrawCommandImage *img = s_digits[digit];
+  _color_digit(img, fg);
   gdraw_command_image_draw(ctx, img, r.origin);
+}
+
+// Draw scaled down to clock-mode size by temporarily mutating point coordinates.
+// Saves originals on the stack and restores exactly — avoids integer drift on each tap.
+#define SCALE_MAX_PTS 64
+static void draw_digit_at_scale(GContext *ctx, int digit, GRect r, GColor fg) {
+  GDrawCommandImage *img  = s_digits[digit];
+  _color_digit(img, fg);
+
+  GDrawCommandList *cmds = gdraw_command_image_get_command_list(img);
+  uint32_t nc = gdraw_command_list_get_num_commands(cmds);
+
+  GPoint saved[SCALE_MAX_PTS];
+  uint16_t total = 0;
+
+  for (uint32_t j = 0; j < nc; j++) {
+    GDrawCommand *cmd = gdraw_command_list_get_command(cmds, j);
+    uint16_t np = gdraw_command_get_num_points(cmd);
+    for (uint16_t k = 0; k < np && total < SCALE_MAX_PTS; k++, total++) {
+      saved[total] = gdraw_command_get_point(cmd, k);
+      GPoint p = saved[total];
+      p.x = (int16_t)(p.x * DIGIT_H / LOGO_DIGIT_H);
+      p.y = (int16_t)(p.y * DIGIT_H / LOGO_DIGIT_H);
+      gdraw_command_set_point(cmd, k, p);
+    }
+  }
+
+  gdraw_command_image_draw(ctx, img, r.origin);
+
+  // Restore from saved — exact, no drift
+  total = 0;
+  for (uint32_t j = 0; j < nc; j++) {
+    GDrawCommand *cmd = gdraw_command_list_get_command(cmds, j);
+    uint16_t np = gdraw_command_get_num_points(cmd);
+    for (uint16_t k = 0; k < np && total < SCALE_MAX_PTS; k++, total++) {
+      gdraw_command_set_point(cmd, k, saved[total]);
+    }
+  }
 }
 
 static void layer_update_proc(Layer *layer, GContext *ctx) {
@@ -117,7 +165,7 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
   } else {
     int d[4] = { h / 10, h % 10, m / 10, m % 10 };
     for (int i = 0; i < 4; i++) {
-      draw_digit(ctx, d[i], s_clock_rects[i], fg);
+      draw_digit_at_scale(ctx, d[i], s_clock_rects[i], fg);
     }
   }
 }

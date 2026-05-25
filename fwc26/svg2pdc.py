@@ -31,9 +31,9 @@ import sys
 import xml.etree.ElementTree as ET
 
 PLATFORMS = [
-    ("std",   48),   # aplite/basalt/diorite/flint  → 64×48 px per digit
-    ("chalk", 60),   # chalk                        → 80×60 px per digit
-    ("emery", 68),   # emery                        → 91×68 px per digit
+    ("std",   76),   # aplite/basalt/diorite/flint  → 101×76 px (logo size; scaled down at runtime for clock)
+    ("chalk", 82),   # chalk                        → 109×82 px
+    ("emery", 106),  # emery                        → 141×106 px
 ]
 
 OUT = os.path.join(os.path.dirname(__file__), "resources/digits")
@@ -88,7 +88,7 @@ def _tokenize(d):
     )
 
 
-def parse_subpaths(d):
+def parse_subpaths(d, tol=1.0):
     """
     Parse SVG path `d` attribute into a list of subpaths.
     Each subpath is a dict with keys:
@@ -168,7 +168,7 @@ def parse_subpaths(d):
                 p1 = (args[i],   args[i+1])
                 p2 = (args[i+2], args[i+3])
                 p3 = (args[i+4], args[i+5])
-                for fp in flatten_cubic(pos, p1, p2, p3):
+                for fp in flatten_cubic(pos, p1, p2, p3, tol):
                     points.append(fp)
                 pos = p3
         elif cmd == 'c':
@@ -176,7 +176,7 @@ def parse_subpaths(d):
                 p1 = (pos[0]+args[i],   pos[1]+args[i+1])
                 p2 = (pos[0]+args[i+2], pos[1]+args[i+3])
                 p3 = (pos[0]+args[i+4], pos[1]+args[i+5])
-                for fp in flatten_cubic(pos, p1, p2, p3):
+                for fp in flatten_cubic(pos, p1, p2, p3, tol):
                     points.append(fp)
                 pos = p3
         elif cmd == 'S':
@@ -186,7 +186,7 @@ def parse_subpaths(d):
                 p1 = (2*pos[0]-prev_p2[0], 2*pos[1]-prev_p2[1])
                 p2 = (args[i],   args[i+1])
                 p3 = (args[i+2], args[i+3])
-                for fp in flatten_cubic(pos, p1, p2, p3):
+                for fp in flatten_cubic(pos, p1, p2, p3, tol):
                     points.append(fp)
                 prev_p2 = p2
                 pos = p3
@@ -286,6 +286,7 @@ def svg_to_pdc_commands(svg_path, target_h):
     scale   = target_h / vbox_h
     pdc_w   = round(vbox_w * scale)
     pdc_h   = target_h
+    tol     = 0.4
 
     def tp(x, y):
         return (round(x * scale), round(y * scale))
@@ -325,7 +326,7 @@ def svg_to_pdc_commands(svg_path, target_h):
         base_fill   = css_to_pebble(fill_css)
         base_stroke = css_to_pebble(stroke_css) or 0x00
 
-        subpaths = parse_subpaths(d)
+        subpaths = parse_subpaths(d, tol=tol)
 
         # For nonzero rule: determine outer winding from the subpath with largest area.
         # Subpaths with opposite winding are holes.
