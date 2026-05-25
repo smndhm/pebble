@@ -70,11 +70,11 @@ static void recalculate_layout(GRect bounds) {
   s_clock_rects[2] = GRect(cx,                   cy + DIGIT_H + GAP,   DIGIT_W, DIGIT_H);
   s_clock_rects[3] = GRect(cx + DIGIT_W + GAP,   cy + DIGIT_H + GAP,   DIGIT_W, DIGIT_H);
 
-  // Logo mode: 2 digits, single row, centered
-  int lx = (sw - (2 * DIGIT_W + GAP)) / 2;
-  int ly = (sh - DIGIT_H) / 2;
-  s_logo_rects[0] = GRect(lx,                  ly, DIGIT_W, DIGIT_H);
-  s_logo_rects[1] = GRect(lx + DIGIT_W + GAP,  ly, DIGIT_W, DIGIT_H);
+  // Logo mode: 2 digits stacked vertically, centered
+  int lx = (sw - DIGIT_W) / 2;
+  int ly = (sh - (2 * DIGIT_H + GAP)) / 2;
+  s_logo_rects[0] = GRect(lx, ly,                  DIGIT_W, DIGIT_H);
+  s_logo_rects[1] = GRect(lx, ly + DIGIT_H + GAP,  DIGIT_W, DIGIT_H);
 }
 
 static void draw_digit(GContext *ctx, int digit, GRect r, GColor fg) {
