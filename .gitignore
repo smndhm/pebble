@@ -1,4 +1,12 @@
 build
 .lock-*
-screenshots
 node_modules
+__pycache__/
+.claude/
+docs/
+**/screenshots/old/
+watchfaces/fwc26/resources/digits/
+watchfaces/claude-fails/
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock

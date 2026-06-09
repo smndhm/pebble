@@ -1,0 +1,94 @@
+{
+  "time": [20, 26, 0],
+  "matrix": {
+    "teams": [
+      {
+        "slug": "france",
+        "team_index": 23,
+        "bg": 43775,
+        "fg": 255,
+        "fg2": 16711680,
+        "col": 16777215
+      },
+      {
+        "slug": "usa",
+        "team_index": 22,
+        "bg": 43775,
+        "fg": 255,
+        "fg2": 170,
+        "col": 16711680
+      },
+      {
+        "slug": "canada",
+        "team_index": 11,
+        "bg": 43775,
+        "fg": 16711680,
+        "fg2": 16777215,
+        "col": 16733525
+      },
+      {
+        "slug": "mexico",
+        "team_index": 31,
+        "bg": 43775,
+        "fg": 21760,
+        "fg2": 16711680,
+        "col": 16777215
+      }
+    ],
+    "modes": [
+      {
+        "slug": "logo",
+        "team_mode": "colors",
+        "DISPLAY_MODE": 0,
+        "LOGO_PIXEL": 0,
+        "SUB_MODE": 0
+      },
+      {
+        "slug": "logo_pixel",
+        "team_mode": "colors",
+        "DISPLAY_MODE": 0,
+        "LOGO_PIXEL": 1,
+        "SUB_MODE": 0
+      },
+      {
+        "slug": "sup_minutes",
+        "team_mode": "index",
+        "DISPLAY_MODE": 1,
+        "LOGO_PIXEL": 0,
+        "SUB_MODE": 0
+      },
+      {
+        "slug": "sup_hm",
+        "team_mode": "index",
+        "DISPLAY_MODE": 1,
+        "LOGO_PIXEL": 0,
+        "SUB_MODE": 1
+      },
+      {
+        "slug": "classic",
+        "team_mode": "colors",
+        "DISPLAY_MODE": 2,
+        "LOGO_PIXEL": 0,
+        "SUB_MODE": 0
+      }
+    ]
+  },
+  "bw_shots": [
+    {
+      "slug": "logo",
+      "appmessage": { "DISPLAY_MODE": 0, "LOGO_PIXEL": 0, "SUB_MODE": 0 }
+    },
+    {
+      "slug": "sup_minutes",
+      "appmessage": { "DISPLAY_MODE": 1, "LOGO_PIXEL": 0, "SUB_MODE": 0 }
+    },
+    {
+      "slug": "sup_hm",
+      "appmessage": { "DISPLAY_MODE": 1, "LOGO_PIXEL": 0, "SUB_MODE": 1 }
+    },
+    {
+      "slug": "classic",
+      "appmessage": { "DISPLAY_MODE": 2, "LOGO_PIXEL": 0, "SUB_MODE": 0 }
+    }
+  ]
+}

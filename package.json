@@ -1,45 +1,15 @@
 {
-  "name": "lslt",
-  "author": "smndhm",
-  "description": "A minimalist digital watchface that animates a custom variable font, smoothly growing the glyph weight over time.",
-  "version": "0.6.0",
-  "keywords": [
-    "pebble",
-    "watchface",
-    "pebble-watchface",
-    "LSLT",
-    "variable-font",
-    "custom-font",
-    "animated",
-    "rebble",
-    "repebble"
-  ],
+  "name": "pebble",
+  "version": "0.0.0",
   "private": true,
-  "pebble": {
-    "displayName": "LSLT",
-    "uuid": "bd0ddcf5-d9e4-4e4c-9906-e5e41acc1e01",
-    "sdkVersion": "3",
-    "enableMultiJS": true,
-    "targetPlatforms": [
-      "aplite",
-      "basalt",
-      "chalk",
-      "diorite",
-      "emery",
-      "flint"
-    ],
-    "watchapp": {
-      "watchface": true
-    },
-    "resources": {
-      "media": []
-    },
-    "messageKeys": [
-      "BGCOLOR",
-      "FGCOLOR"
-    ]
+  "packageManager": "pnpm@11.5.2+sha256.749dc54fbd3dcde9e414baae32c177ca84770d3fcd69c8816d579adc3e6a2c99",
+  "scripts": {
+    "lint": "biome check",
+    "format": "biome format --write .",
+    "check-versions": "syncpack lint"
   },
-  "dependencies": {
-    "@rebble/clay": "^1.0.8"
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "syncpack": "15.3.1"
   }
 }

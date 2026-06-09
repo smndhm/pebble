@@ -1,0 +1,19 @@
+{
+  "shots": [
+    {
+      "slug": "thin",
+      "time": [0, 0, 0],
+      "appmessage": { "BGCOLOR": 0, "FGCOLOR": 16777215 }
+    },
+    {
+      "slug": "mid",
+      "time": [12, 34, 56],
+      "appmessage": { "BGCOLOR": 170, "FGCOLOR": 16733695 }
+    },
+    {
+      "slug": "bold",
+      "time": [23, 59, 58],
+      "appmessage": { "BGCOLOR": 0, "FGCOLOR": 16777215 }
+    }
+  ]
+}

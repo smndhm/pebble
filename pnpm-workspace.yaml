@@ -1,0 +1,5 @@
+packages:
+  - "watchfaces/*"
+
+catalog:
+  "@rebble/clay": "1.0.10"
