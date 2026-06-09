@@ -6,17 +6,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A monorepo of Pebble/Rebble watchface projects, each a standalone Pebble SDK 3 app. All target the full platform set: aplite, basalt, chalk, diorite, emery, flint.
 
-| Project | Description |
+```
+watchfaces/      ← one directory per watchface
+  fwc26/         ← World Cup 2026 (active)
+  lslt/          ← minimalist variable-font animation
+  claude-fails/  ← archived: earlier WC2026 PDC approach
+tools/
+  font/          ← glyph generation (fwc26)
+  screenshots/   ← emulator capture + grid compositor
+```
+
+| Watchface | Description |
 |---|---|
-| `fwc26/` | FIFA World Cup 2026 watchface using a custom FWC26 typeface (active development) |
-| `lslt/` | Minimalist watchface that animates a variable font — digit weight grows over the minute/hour |
-| `claude-fails/` | Earlier WC2026 attempt using pre-baked PDC resources instead of drawn paths |
+| `watchfaces/fwc26/` | World Cup 2026 watchface using a custom FWC26 typeface (active development) |
+| `watchfaces/lslt/` | Minimalist watchface that animates a variable font — digit weight grows over the minute/hour |
+| `watchfaces/claude-fails/` | Earlier WC2026 attempt using pre-baked PDC resources instead of drawn paths |
 
 ## Build & Run
 
-From inside a project directory:
+From inside a watchface directory:
 
 ```bash
+cd watchfaces/fwc26
 pebble build                              # build all platforms
 pebble install --emulator basalt          # install on emulator (basalt = most common)
 pebble install --emulator chalk           # round screen (Pebble Time Round)
@@ -25,6 +36,24 @@ pebble logs --emulator basalt             # stream app logs
 ```
 
 There are no test suites. Validation is by running on the emulator.
+
+## Screenshots
+
+Each watchface has a `screenshots/config.json` that defines shots (time + AppMessage config per platform). B&W vs color platform split is automatic from `package.json` `targetPlatforms`.
+
+```bash
+# Capture all screenshots for a watchface
+tools/screenshots/make_screenshots.py watchfaces/fwc26/screenshots/config.json
+
+# Generate the grid overview image
+tools/screenshots/make_grid.py watchfaces/fwc26/screenshots/
+
+# Same for lslt
+tools/screenshots/make_screenshots.py watchfaces/lslt/screenshots/config.json
+tools/screenshots/make_grid.py watchfaces/lslt/screenshots/
+```
+
+`make_screenshots.py` must be run with the pebble-tool Python (shebang handles this). `make_grid.py` uses system Python + Pillow.
 
 ## Architecture
 
@@ -56,13 +85,13 @@ Two scripts produce the same output format — use whichever source you have:
 
 ```bash
 # From Fontra glyph editor (requires ~/fonts/fwc26/Untitled.fontra/glyphs/)
-cd fwc26 && python3 fontra_to_c.py
+python3 tools/font/fontra_to_c.py watchfaces/fwc26
 
 # From SVG files in resources/svg/
-cd fwc26 && python3 svg_to_c.py
+python3 tools/font/svg_to_c.py watchfaces/fwc26
 ```
 
-`fwc26/wscript` also calls `svg2pdc.py` at build time to convert `resources/svg/` → `resources/digits/*.pdc` (used by `claude-fails`, not `fwc26`).
+`tools/font/svg_to_pdc.py` converts `resources/svg/` → `resources/digits/*.pdc` (used by `claude-fails`, not `fwc26`).
 
 ### lslt — variable font animation
 
@@ -76,4 +105,4 @@ Glyph results are cached in `CachedGlyph` structs and only recalculated when the
 
 ### claude-fails — PDC resource approach
 
-Digits are pre-converted SVG→PDC files embedded as raw resources. The wscript converts `resources/svg/*.svg` → `resources/digits/*.pdc` at build time using `svg2pdc.py`. Separate PDC sets exist for std (aplite/basalt/diorite/flint), chalk (round), and emery platforms.
+Digits are pre-converted SVG→PDC files embedded as raw resources. The wscript converts `resources/svg/*.svg` → `resources/digits/*.pdc` at build time using `tools/font/svg_to_pdc.py`. Separate PDC sets exist for std (aplite/basalt/diorite/flint), chalk (round), and emery platforms.

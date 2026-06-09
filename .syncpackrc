@@ -1,0 +1,10 @@
+{
+  "semverGroups": [
+    {
+      "label": "Pinned versions required",
+      "packages": ["**"],
+      "dependencies": ["**"],
+      "range": ""
+    }
+  ]
+}
