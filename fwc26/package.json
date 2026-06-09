@@ -1,52 +1,22 @@
 {
   "name": "fwc26",
   "author": "smndhm",
-  "description": "FIFA World Cup 2026 watchface using the custom fwc26 typeface.",
+  "description": "World Cup 2026 watchface with a custom typeface hand-crafted from the WC26 logo letterforms. Team colors for all 48 qualified nations. Football / soccer — Coupe du Monde 2026.",
   "version": "0.1.0",
-  "keywords": ["pebble", "watchface", "fifa", "world-cup", "wc2026", "rebble"],
+  "keywords": ["pebble", "watchface", "rebble", "world-cup", "worldcup", "wc2026", "wc26", "football", "soccer", "coupe-du-monde", "fifa", "2026", "usa", "canada", "mexico"],
   "private": true,
   "pebble": {
-    "displayName": "FWC26",
+    "displayName": "World Cup 2026",
     "uuid": "c2edb3a7-a11c-4e91-8c24-c4b87c7649de",
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": ["aplite", "basalt", "chalk", "diorite", "emery", "flint"],
+    "capabilities": ["configurable", "location"],
     "watchapp": { "watchface": true },
     "resources": {
-      "media": [
-        { "type": "raw", "name": "DIGIT_STD_0",   "file": "digits/std_0.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_1",   "file": "digits/std_1.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_2",   "file": "digits/std_2.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_3",   "file": "digits/std_3.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_4",   "file": "digits/std_4.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_5",   "file": "digits/std_5.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_6",   "file": "digits/std_6.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_7",   "file": "digits/std_7.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_8",   "file": "digits/std_8.pdc"   },
-        { "type": "raw", "name": "DIGIT_STD_9",   "file": "digits/std_9.pdc"   },
-        { "type": "raw", "name": "DIGIT_CHALK_0", "file": "digits/chalk_0.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_1", "file": "digits/chalk_1.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_2", "file": "digits/chalk_2.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_3", "file": "digits/chalk_3.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_4", "file": "digits/chalk_4.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_5", "file": "digits/chalk_5.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_6", "file": "digits/chalk_6.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_7", "file": "digits/chalk_7.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_8", "file": "digits/chalk_8.pdc" },
-        { "type": "raw", "name": "DIGIT_CHALK_9", "file": "digits/chalk_9.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_0", "file": "digits/emery_0.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_1", "file": "digits/emery_1.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_2", "file": "digits/emery_2.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_3", "file": "digits/emery_3.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_4", "file": "digits/emery_4.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_5", "file": "digits/emery_5.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_6", "file": "digits/emery_6.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_7", "file": "digits/emery_7.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_8", "file": "digits/emery_8.pdc" },
-        { "type": "raw", "name": "DIGIT_EMERY_9", "file": "digits/emery_9.pdc" }
-      ]
+      "media": []
     },
-    "messageKeys": ["BGCOLOR", "FGCOLOR", "TRANSCOLOR", "MODE_LOGO", "TAP_ENABLED"]
+    "messageKeys": ["BGCOLOR", "FGCOLOR", "COLOR_RIGHT", "DISPLAY_MODE", "TEAM_INDEX", "COL_COLOR", "REQUEST_CONFIG", "LOGO_PIXEL", "SUB_MODE"]
   },
   "dependencies": {
     "@rebble/clay": "^1.0.8"
