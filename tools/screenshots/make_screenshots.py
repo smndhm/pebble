@@ -145,6 +145,11 @@ def run(platform_shots, app_uuid, pbw_path, out_dir):
 
     for platform, shots in platform_shots.items():
         print(f'\n=== {platform} ===')
+        platform_dir = os.path.join(out_dir, platform)
+        if os.path.exists(platform_dir):
+            import shutil
+            shutil.rmtree(platform_dir)
+
         pebble = None
         try:
             pebble = emu.connect_emulator(platform)
