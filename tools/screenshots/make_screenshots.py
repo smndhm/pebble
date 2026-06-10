@@ -153,20 +153,17 @@ def run(platform_shots, app_uuid, pbw_path, out_dir):
             time.sleep(1.5)
             emu.set_24h(pebble)
 
-            prev_time = None
             for shot in shots:
                 done += 1
                 slug, t, msg = shot['slug'], shot['time'], shot.get('appmessage', {})
                 print(f'  [{done}/{total}] {platform}/{slug}')
 
-                if t != prev_time:
-                    emu.set_time(pebble, *t)
-                    prev_time = t
-
                 if msg:
                     emu.send_appmessage(pebble, app_uuid, msg)
                 else:
                     time.sleep(0.5)
+
+                emu.set_time(pebble, *t)
 
                 image = emu.take_screenshot(pebble)
                 out_path = os.path.join(out_dir, platform, f'{slug}.png')
