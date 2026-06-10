@@ -60,7 +60,7 @@ def set_time(pebble, hour, minute, second=0):
     tz_minutes = tz_offset // 60
     tz_name = "UTC%+d" % (tz_minutes // 60)
     pebble.send_packet(TimeMessage(message=SetUTC(unix_time=ts, utc_offset=tz_minutes, tz_name=tz_name)))
-    time.sleep(1.0)
+    time.sleep(1.5)
 
 
 def send_appmessage(pebble, app_uuid, msg):
@@ -71,12 +71,19 @@ def send_appmessage(pebble, app_uuid, msg):
     time.sleep(1.5)
 
 
-def take_screenshot(pebble):
+def take_screenshot(pebble, retries=2):
     import argparse
     from pebble_tool.commands.screenshot import ScreenshotCommand
-    sc = ScreenshotCommand()
-    sc.pebble = pebble
-    return sc._grab_processed_image(argparse.Namespace(no_correction=False, scale=1), show_progress=False)
+    for attempt in range(retries + 1):
+        try:
+            sc = ScreenshotCommand()
+            sc.pebble = pebble
+            return sc._grab_processed_image(argparse.Namespace(no_correction=False, scale=1), show_progress=False)
+        except Exception:
+            if attempt < retries:
+                time.sleep(1.0)
+            else:
+                raise
 
 
 def shutdown_emulator(platform):

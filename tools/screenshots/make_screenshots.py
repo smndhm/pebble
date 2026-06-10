@@ -145,17 +145,22 @@ def run(platform_shots, app_uuid, pbw_path, out_dir):
 
     for platform, shots in platform_shots.items():
         print(f'\n=== {platform} ===')
+        import shutil
         platform_dir = os.path.join(out_dir, platform)
+        backup_dir = platform_dir + '.__bak'
         if os.path.exists(platform_dir):
-            import shutil
+            if os.path.exists(backup_dir):
+                shutil.rmtree(backup_dir)
+            shutil.copytree(platform_dir, backup_dir)
             shutil.rmtree(platform_dir)
 
         pebble = None
+        captured_ok = False
         try:
             pebble = emu.connect_emulator(platform)
             from pebble_tool.commands.install import ToolAppInstaller
             ToolAppInstaller(pebble, pbw_path, quiet=True).install()
-            time.sleep(1.5)
+            time.sleep(3.0)
             emu.set_24h(pebble)
 
             for shot in shots:
@@ -175,13 +180,22 @@ def run(platform_shots, app_uuid, pbw_path, out_dir):
                 os.makedirs(os.path.dirname(out_path), exist_ok=True)
                 png.from_array(image, mode='RGBA;8').save(out_path)
 
+            captured_ok = True
+
         except Exception as e:
             import traceback
             print(f'ERROR on {platform}: {e}')
             traceback.print_exc()
+            if not captured_ok and os.path.exists(backup_dir):
+                if os.path.exists(platform_dir):
+                    shutil.rmtree(platform_dir)
+                shutil.move(backup_dir, platform_dir)
+                print(f'  restored previous screenshots for {platform}')
         finally:
             emu.close_pebble(pebble)
             emu.shutdown_emulator(platform)
+            if os.path.exists(backup_dir):
+                shutil.rmtree(backup_dir)
             time.sleep(2.0)
 
 
