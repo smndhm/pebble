@@ -6,6 +6,6 @@
   "shots": [
     { "slug": "thin", "time": [0, 0, 0] },
     { "slug": "mid", "time": [12, 34, 56] },
-    { "slug": "bold", "time": [11, 58, 56] }
+    { "slug": "bold", "time": [23, 58, 56] }
   ]
 }

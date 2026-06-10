@@ -50,8 +50,11 @@ def set_24h(pebble):
 
 
 def set_time(pebble, hour, minute, second=0):
-    now = datetime.datetime.now()
-    target = now.replace(hour=hour, minute=minute, second=second, microsecond=0)
+    # Use tomorrow as base so the timestamp is always in the future — the
+    # Pebble emulator rejects backward time jumps, which happens whenever
+    # the target H:M:S is earlier than the current real-world time.
+    tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
+    target = tomorrow.replace(hour=hour, minute=minute, second=second, microsecond=0)
     ts = int(target.timestamp())
     tz_offset = -time.altzone if time.localtime(ts).tm_isdst and time.daylight else -time.timezone
     tz_minutes = tz_offset // 60
