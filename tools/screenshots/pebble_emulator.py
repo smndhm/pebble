@@ -50,16 +50,17 @@ def set_24h(pebble):
 
 
 def set_time(pebble, hour, minute, second=0):
-    now = datetime.datetime.now()
-    target = now.replace(hour=hour, minute=minute, second=second, microsecond=0)
+    # Use tomorrow as base so the timestamp is always in the future — the
+    # Pebble emulator rejects backward time jumps, which happens whenever
+    # the target H:M:S is earlier than the current real-world time.
+    tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
+    target = tomorrow.replace(hour=hour, minute=minute, second=second, microsecond=0)
     ts = int(target.timestamp())
     tz_offset = -time.altzone if time.localtime(ts).tm_isdst and time.daylight else -time.timezone
     tz_minutes = tz_offset // 60
     tz_name = "UTC%+d" % (tz_minutes // 60)
-    for _ in range(2):
-        pebble.send_packet(TimeMessage(message=SetUTC(unix_time=ts, utc_offset=tz_minutes, tz_name=tz_name)))
-        time.sleep(0.35)
-    time.sleep(0.5)
+    pebble.send_packet(TimeMessage(message=SetUTC(unix_time=ts, utc_offset=tz_minutes, tz_name=tz_name)))
+    time.sleep(1.5)
 
 
 def send_appmessage(pebble, app_uuid, msg):
@@ -70,12 +71,19 @@ def send_appmessage(pebble, app_uuid, msg):
     time.sleep(1.5)
 
 
-def take_screenshot(pebble):
+def take_screenshot(pebble, retries=2):
     import argparse
     from pebble_tool.commands.screenshot import ScreenshotCommand
-    sc = ScreenshotCommand()
-    sc.pebble = pebble
-    return sc._grab_processed_image(argparse.Namespace(no_correction=False, scale=1), show_progress=False)
+    for attempt in range(retries + 1):
+        try:
+            sc = ScreenshotCommand()
+            sc.pebble = pebble
+            return sc._grab_processed_image(argparse.Namespace(no_correction=False, scale=1), show_progress=False)
+        except Exception:
+            if attempt < retries:
+                time.sleep(1.0)
+            else:
+                raise
 
 
 def shutdown_emulator(platform):
