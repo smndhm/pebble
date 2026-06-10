@@ -1,5 +1,8 @@
 {
-  "color_appmessage": { "BGCOLOR": 0, "FGCOLOR": 16777215 },
+  "color_variants": [
+    { "slug": "dark", "appmessage": { "BGCOLOR": 0, "FGCOLOR": 16777215 } },
+    { "slug": "blue", "appmessage": { "BGCOLOR": 170, "FGCOLOR": 16733695 } }
+  ],
   "shots": [
     { "slug": "thin", "time": [0, 0, 0] },
     { "slug": "mid", "time": [12, 34, 56] },

@@ -8,6 +8,16 @@ Config format (JSON):
   Simple shots (same for all platforms):
     { "shots": [{"slug": "thin", "time": [0,0,0]}, ...] }
 
+  Color variants × shots (color platforms only; B&W use shots directly):
+    {
+      "color_variants": [
+        {"slug": "dark", "appmessage": {"BGCOLOR": 0, "FGCOLOR": 16777215}},
+        {"slug": "blue", "appmessage": {"BGCOLOR": 170, "FGCOLOR": 16733695}}
+      ],
+      "shots": [{"slug": "thin", "time": [0,0,0]}, ...]
+    }
+    Color platform slugs become "dark/thin", "blue/thin", etc.
+
   Global appmessage (color_appmessage only sent to color platforms; platforms overrides per-platform):
     {
       "appmessage": {"KEY": value},
@@ -85,6 +95,20 @@ def expand_matrix(matrix, msg_keys, default_time):
     return shots
 
 
+def expand_color_variants(variants, shots, msg_keys, default_time):
+    result = []
+    for variant in variants:
+        variant_msg = variant.get('appmessage', {})
+        for s in shots:
+            raw = {**variant_msg, **s.get('appmessage', {})}
+            result.append({
+                'slug': f"{variant['slug']}/{s['slug']}",
+                'time': tuple(s.get('time', default_time)),
+                'appmessage': resolve_msg(raw, msg_keys),
+            })
+    return result
+
+
 def build_platform_shots(config, msg_keys, platforms):
     default_time = tuple(config.get('time', [0, 0, 0]))
     global_msg = config.get('appmessage', {})
@@ -103,6 +127,8 @@ def build_platform_shots(config, msg_keys, platforms):
                      for s in config['bw_shots']]
         elif not is_bw and 'matrix' in config:
             shots = expand_matrix(config['matrix'], msg_keys, default_time)
+        elif not is_bw and 'color_variants' in config:
+            shots = expand_color_variants(config['color_variants'], config.get('shots', []), msg_keys, default_time)
         else:
             shots = [{'slug': s['slug'],
                       'time': tuple(s.get('time', default_time)),
