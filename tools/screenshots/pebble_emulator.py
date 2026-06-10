@@ -56,10 +56,8 @@ def set_time(pebble, hour, minute, second=0):
     tz_offset = -time.altzone if time.localtime(ts).tm_isdst and time.daylight else -time.timezone
     tz_minutes = tz_offset // 60
     tz_name = "UTC%+d" % (tz_minutes // 60)
-    for _ in range(2):
-        pebble.send_packet(TimeMessage(message=SetUTC(unix_time=ts, utc_offset=tz_minutes, tz_name=tz_name)))
-        time.sleep(0.35)
-    time.sleep(0.5)
+    pebble.send_packet(TimeMessage(message=SetUTC(unix_time=ts, utc_offset=tz_minutes, tz_name=tz_name)))
+    time.sleep(1.0)
 
 
 def send_appmessage(pebble, app_uuid, msg):
