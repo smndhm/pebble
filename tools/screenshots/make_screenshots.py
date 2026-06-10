@@ -6,7 +6,15 @@ Usage: tools/make_screenshots.py <path/to/watchface/screenshots/config.json>
 Config format (JSON):
 
   Simple shots (same for all platforms):
-    { "shots": [{"slug": "thin", "time": [0,0,0], "appmessage": {"KEY": value}}, ...] }
+    { "shots": [{"slug": "thin", "time": [0,0,0]}, ...] }
+
+  Global appmessage (color_appmessage only sent to color platforms; platforms overrides per-platform):
+    {
+      "appmessage": {"KEY": value},
+      "color_appmessage": {"BGCOLOR": 0, "FGCOLOR": 16777215},
+      "platforms": { "chalk": { "appmessage": {"BGCOLOR": 0, "FGCOLOR": 65535} } },
+      "shots": [{"slug": "thin", "time": [0,0,0]}, ...]
+    }
 
   Matrix expansion (color platforms) + bw_shots (B&W platforms):
     {
@@ -79,20 +87,26 @@ def expand_matrix(matrix, msg_keys, default_time):
 
 def build_platform_shots(config, msg_keys, platforms):
     default_time = tuple(config.get('time', [0, 0, 0]))
+    global_msg = config.get('appmessage', {})
+    color_msg = config.get('color_appmessage', {})
+    platform_overrides = config.get('platforms', {})
     platform_shots = {}
     for platform in platforms:
         is_bw = platform in emu.BW_PLATFORMS
+        base_msg = {**global_msg,
+                    **(color_msg if not is_bw else {}),
+                    **platform_overrides.get(platform, {}).get('appmessage', {})}
         if is_bw and 'bw_shots' in config:
             shots = [{'slug': s['slug'],
                       'time': tuple(s.get('time', default_time)),
-                      'appmessage': resolve_msg(s.get('appmessage', {}), msg_keys)}
+                      'appmessage': resolve_msg({**base_msg, **s.get('appmessage', {})}, msg_keys)}
                      for s in config['bw_shots']]
         elif not is_bw and 'matrix' in config:
             shots = expand_matrix(config['matrix'], msg_keys, default_time)
         else:
             shots = [{'slug': s['slug'],
                       'time': tuple(s.get('time', default_time)),
-                      'appmessage': resolve_msg(s.get('appmessage', {}), msg_keys)}
+                      'appmessage': resolve_msg({**base_msg, **s.get('appmessage', {})}, msg_keys)}
                      for s in config.get('shots', [])]
         platform_shots[platform] = shots
     return platform_shots
