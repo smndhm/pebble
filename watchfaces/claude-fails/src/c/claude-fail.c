@@ -34,22 +34,37 @@ static Layer               *s_layer;
 static struct tm            s_time;
 static GDrawCommandImage   *s_digits[10];
 static GRect                s_digit_rects[4]; // [H1, H2, M1, M2]
+static GSize                s_glyph_size;
 
 static void recalculate_layout(GRect bounds) {
     int sw = bounds.size.w;
     int sh = bounds.size.h;
-    int gap_h = sw / 20;
-    int gap_v = sh / 24;
-    int total_w = 2 * DIGIT_W + gap_h;
-    int total_h = 2 * CAP_H  + gap_v;
+    int dw, dh, gap_h, gap_v;
+#ifdef PBL_ROUND
+    // Scale grid down so its corners fit inside the circular screen.
+    // Inscribed-square side = sw * sqrt(2)/2 ≈ sw * 7071/10000
+    int side = ((sw * 7071) / 10000) & ~1;
+    gap_h = gap_v = side / 20;
+    dw = dh = (side - gap_h) / 2;
+#else
+    gap_h = sw / 20; gap_v = sh / 24;
+    // Ensure at least 4px margin on each side
+    int max_dw = (sw - 8 - gap_h) / 2;
+    int max_dh = (sh - 8 - gap_v) / 2;
+    dw = (DIGIT_W  < max_dw) ? DIGIT_W  : max_dw;
+    dh = (CAP_H    < max_dh) ? CAP_H    : max_dh;
+#endif
+    s_glyph_size = GSize(dw, dh);
+    int total_w = 2 * dw + gap_h;
+    int total_h = 2 * dh + gap_v;
     int x0 = (sw - total_w) / 2;
-    int x1 = x0 + DIGIT_W + gap_h;
+    int x1 = x0 + dw + gap_h;
     int y0 = (sh - total_h) / 2;
-    int y1 = y0 + CAP_H + gap_v;
-    s_digit_rects[0] = GRect(x0, y0, DIGIT_W, CAP_H);
-    s_digit_rects[1] = GRect(x1, y0, DIGIT_W, CAP_H);
-    s_digit_rects[2] = GRect(x0, y1, DIGIT_W, CAP_H);
-    s_digit_rects[3] = GRect(x1, y1, DIGIT_W, CAP_H);
+    int y1 = y0 + dh + gap_v;
+    s_digit_rects[0] = GRect(x0, y0, dw, dh);
+    s_digit_rects[1] = GRect(x1, y0, dw, dh);
+    s_digit_rects[2] = GRect(x0, y1, dw, dh);
+    s_digit_rects[3] = GRect(x1, y1, dw, dh);
 }
 
 static void draw_digit(GContext *ctx, int digit, GRect r, GColor fg) {
@@ -106,6 +121,9 @@ static void window_load(Window *window) {
     Layer *root = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(root);
     recalculate_layout(bounds);
+    for (int i = 0; i < 10; i++) {
+        gdraw_command_image_set_bounds_size(s_digits[i], s_glyph_size);
+    }
 
     s_layer = layer_create(bounds);
     layer_set_update_proc(s_layer, layer_update_proc);
