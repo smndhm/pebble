@@ -5,3 +5,6 @@ __pycache__/
 .claude/
 docs/
 **/screenshots/old/
+watchfaces/**/package-lock.json
+watchfaces/**/pnpm-lock.yaml
+watchfaces/**/yarn.lock
