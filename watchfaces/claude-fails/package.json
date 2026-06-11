@@ -1,13 +1,12 @@
 {
   "name": "claude-fails",
   "author": "smndhm",
-  "description": "A watchface inspired by the FIFA World Cup 2026 typography. Named after the AI that couldn't quite nail the font.",
+  "description": "A failed-but-kept iteration from building fwc26, using pre-baked PDC resources instead of drawn paths.",
   "version": "0.1.0",
   "keywords": [
     "pebble",
     "watchface",
-    "fifa",
-    "world-cup",
+    "world-cup-2026",
     "wc2026",
     "rebble"
   ],
