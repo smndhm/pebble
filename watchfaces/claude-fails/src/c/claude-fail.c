@@ -34,22 +34,54 @@ static Layer               *s_layer;
 static struct tm            s_time;
 static GDrawCommandImage   *s_digits[10];
 static GRect                s_digit_rects[4]; // [H1, H2, M1, M2]
+static int                  s_digit_px; // actual rendered size (may differ from DIGIT_W)
+
+static void scale_digit_points(int target) {
+    for (int i = 0; i < 10; i++) {
+        GDrawCommandList *cmds = gdraw_command_image_get_command_list(s_digits[i]);
+        uint32_t nc = gdraw_command_list_get_num_commands(cmds);
+        for (uint32_t j = 0; j < nc; j++) {
+            GDrawCommand *cmd = gdraw_command_list_get_command(cmds, j);
+            uint16_t np = gdraw_command_get_num_points(cmd);
+            for (uint16_t k = 0; k < np; k++) {
+                GPoint p = gdraw_command_get_point(cmd, k);
+                p.x = (int16_t)(p.x * target / DIGIT_W);
+                p.y = (int16_t)(p.y * target / CAP_H);
+                gdraw_command_set_point(cmd, k, p);
+            }
+        }
+        gdraw_command_image_set_bounds_size(s_digits[i], GSize(target, target));
+    }
+}
 
 static void recalculate_layout(GRect bounds) {
     int sw = bounds.size.w;
     int sh = bounds.size.h;
-    int gap_h = sw / 20;
-    int gap_v = sh / 24;
-    int total_w = 2 * DIGIT_W + gap_h;
-    int total_h = 2 * CAP_H  + gap_v;
+    int dw, gap_h, gap_v;
+#ifdef PBL_ROUND
+    // Scale grid so its corners fit inside the circular screen.
+    // Inscribed-square side = sw * sqrt(2)/2 ≈ sw * 7071/10000
+    int side = ((sw * 7071) / 10000) & ~1;
+    gap_h = gap_v = side / 20;
+    dw = (side - gap_h) / 2;
+#else
+    gap_h = sw / 20; gap_v = sh / 24;
+    // Ensure at least 4px margin on each side (use the tighter axis)
+    int a = (sw - 8 - gap_h) / 2, b = (sh - 8 - gap_v) / 2;
+    int max_d = (a < b) ? a : b;
+    dw = (DIGIT_W < max_d) ? DIGIT_W : max_d;
+#endif
+    s_digit_px = dw;
+    int total_w = 2 * dw + gap_h;
+    int total_h = 2 * dw + gap_v;
     int x0 = (sw - total_w) / 2;
-    int x1 = x0 + DIGIT_W + gap_h;
+    int x1 = x0 + dw + gap_h;
     int y0 = (sh - total_h) / 2;
-    int y1 = y0 + CAP_H + gap_v;
-    s_digit_rects[0] = GRect(x0, y0, DIGIT_W, CAP_H);
-    s_digit_rects[1] = GRect(x1, y0, DIGIT_W, CAP_H);
-    s_digit_rects[2] = GRect(x0, y1, DIGIT_W, CAP_H);
-    s_digit_rects[3] = GRect(x1, y1, DIGIT_W, CAP_H);
+    int y1 = y0 + dw + gap_v;
+    s_digit_rects[0] = GRect(x0, y0, dw, dw);
+    s_digit_rects[1] = GRect(x1, y0, dw, dw);
+    s_digit_rects[2] = GRect(x0, y1, dw, dw);
+    s_digit_rects[3] = GRect(x1, y1, dw, dw);
 }
 
 static void draw_digit(GContext *ctx, int digit, GRect r, GColor fg) {
@@ -106,6 +138,9 @@ static void window_load(Window *window) {
     Layer *root = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(root);
     recalculate_layout(bounds);
+    if (s_digit_px != DIGIT_W) {
+        scale_digit_points(s_digit_px);
+    }
 
     s_layer = layer_create(bounds);
     layer_set_update_proc(s_layer, layer_update_proc);

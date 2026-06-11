@@ -5,8 +5,6 @@ __pycache__/
 .claude/
 docs/
 **/screenshots/old/
-watchfaces/fwc26/resources/digits/
-watchfaces/claude-fails/resources/
-**/package-lock.json
-**/pnpm-lock.yaml
-**/yarn.lock
+watchfaces/**/package-lock.json
+watchfaces/**/pnpm-lock.yaml
+watchfaces/**/yarn.lock
